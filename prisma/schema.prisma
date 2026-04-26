@@ -1,0 +1,129 @@
+// ===========================================
+// BillEasy AI Service - Prisma Schema
+// IMPORTANTE: Este schema é SOMENTE LEITURA
+// Todas as migrations são gerenciadas pelo backend Java (Flyway)
+// Use: npx prisma db pull para sincronizar
+// ===========================================
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MODELOS - Espelhados do banco Java
+// ============================================
+
+model Usuario {
+  id           String    @id @default(uuid()) @db.Uuid
+  nome         String
+  email        String    @unique
+  status       String    @default("ATIVO")
+  tipoUsuario  String?   @map("tipo_usuario")
+  createdAt    DateTime  @default(now()) @map("criado_em")
+  updatedAt    DateTime  @updatedAt @map("atualizado_em")
+
+  devedores    Devedor[]
+  empresas     Empresa[] @relation("EmpresaResponsavel")
+
+  @@map("usuarios")
+}
+
+model Empresa {
+  id            String    @id @default(uuid()) @db.Uuid
+  nome          String
+  cnpj          String    @unique
+  telefone      String?
+  tipo          String    @default("CREDORA")
+  status        String    @default("ATIVA")
+  responsavelId String?   @map("responsavel_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("criado_em")
+  updatedAt     DateTime  @updatedAt @map("atualizado_em")
+
+  responsavel   Usuario?  @relation("EmpresaResponsavel", fields: [responsavelId], references: [id])
+  devedores     Devedor[]
+  dividas       Divida[]
+  contratos     Contrato[]
+
+  @@map("empresas")
+}
+
+model Devedor {
+  id           String    @id @default(uuid()) @db.Uuid
+  nome         String
+  cpfCnpjEnc   String?   @map("cpf_cnpj_enc")
+  email        String?
+  telefone     String?
+  status       String    @default("ATIVO")
+  empresaId    String    @map("empresa_id") @db.Uuid
+  usuarioId    String?   @map("usuario_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("criado_em")
+  updatedAt    DateTime  @updatedAt @map("atualizado_em")
+
+  empresa      Empresa   @relation(fields: [empresaId], references: [id])
+  usuario      Usuario?  @relation(fields: [usuarioId], references: [id])
+  dividas      Divida[]
+  contratos    Contrato[]
+
+  @@map("devedores")
+}
+
+model Divida {
+  id               String    @id @default(uuid()) @db.Uuid
+  descricao        String
+  valorPrincipal   Decimal   @map("valor_principal") @db.Decimal(15, 2)
+  multaPercentual  Decimal?  @map("multa_percentual") @db.Decimal(5, 2)
+  jurosMensal      Decimal?  @map("juros_mensal_percentual") @db.Decimal(5, 2)
+  dataVencimento   DateTime? @map("data_vencimento")
+  status           String    @default("ABERTA")
+  devedorId        String    @map("devedor_id") @db.Uuid
+  empresaId        String    @map("empresa_id") @db.Uuid
+  contratoId       String?   @map("contrato_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("criado_em")
+  updatedAt        DateTime  @updatedAt @map("atualizado_em")
+
+  devedor          Devedor   @relation(fields: [devedorId], references: [id])
+  empresa          Empresa   @relation(fields: [empresaId], references: [id])
+  contrato         Contrato? @relation(fields: [contratoId], references: [id])
+  parcelas         Parcela[]
+
+  @@map("dividas")
+}
+
+model Parcela {
+  id             String    @id @default(uuid()) @db.Uuid
+  numero         Int
+  valor          Decimal   @db.Decimal(15, 2)
+  dataVencimento DateTime  @map("data_vencimento")
+  status         String    @default("EM_ABERTO")
+  dividaId       String    @map("divida_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("criado_em")
+  updatedAt      DateTime  @updatedAt @map("atualizado_em")
+
+  divida         Divida    @relation(fields: [dividaId], references: [id])
+
+  @@map("parcelas")
+}
+
+model Contrato {
+  id              String    @id @default(uuid()) @db.Uuid
+  titulo          String
+  descricao       String?
+  valorTotal      Decimal   @map("valor_total") @db.Decimal(15, 2)
+  status          String    @default("RASCUNHO")
+  credorEmpresaId String    @map("credor_empresa_id") @db.Uuid
+  devedorId       String    @map("devedor_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("criado_em")
+  updatedAt       DateTime  @updatedAt @map("atualizado_em")
+
+  credorEmpresa   Empresa   @relation(fields: [credorEmpresaId], references: [id])
+  devedor         Devedor   @relation(fields: [devedorId], references: [id])
+  dividas         Divida[]
+
+  @@map("contratos")
+}
