@@ -3,7 +3,7 @@
 # ===========================================
 
 # Dependências
-node_modules
+node_modules/
 package-lock.json
 
 # Build
@@ -47,5 +47,3 @@ temp/
 
 # Uploads
 uploads/
-
-.DS_Store
