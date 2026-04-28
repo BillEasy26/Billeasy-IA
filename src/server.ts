@@ -9,7 +9,6 @@ import compression from 'compression';
 
 import { config } from './config/index.js';
 import { logger } from './utils/logger.js';
-import { prisma } from './config/database.js';
 import routes from './routes/index.js';
 import { registerDocumentPrompts } from './prompts/documents/index.js';
 import {
@@ -94,29 +93,11 @@ app.get('/health', (_req, res) => {
   });
 });
 
-app.get('/ready', async (_req, res) => {
-  try {
-    // Verifica conexão com banco
-    await prisma.$queryRaw`SELECT 1`;
-
-    res.json({
-      status: 'ready',
-      timestamp: new Date().toISOString(),
-      checks: {
-        database: 'ok',
-      },
-    });
-  } catch (error) {
-    logger.error('Readiness check falhou', { error });
-
-    res.status(503).json({
-      status: 'not ready',
-      timestamp: new Date().toISOString(),
-      checks: {
-        database: 'failed',
-      },
-    });
-  }
+app.get('/ready', (_req, res) => {
+  res.json({
+    status: 'ready',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ===========================================
@@ -142,11 +123,6 @@ async function startServer() {
     registerDocumentPrompts();
     logger.info('Catálogo de prompts carregado');
 
-    // Testa conexão com banco
-    logger.info('Conectando ao banco de dados...');
-    await prisma.$connect();
-    logger.info('Conexão com banco de dados estabelecida');
-
     // Inicia servidor
     const server = app.listen(config.port, () => {
       logger.info(`🚀 BillEasy AI Service iniciado`, {
@@ -160,12 +136,8 @@ async function startServer() {
     const shutdown = async (signal: string) => {
       logger.info(`Recebido sinal ${signal}, iniciando shutdown...`);
 
-      server.close(async () => {
+      server.close(() => {
         logger.info('Servidor HTTP fechado');
-
-        await prisma.$disconnect();
-        logger.info('Conexão com banco de dados fechada');
-
         process.exit(0);
       });
 

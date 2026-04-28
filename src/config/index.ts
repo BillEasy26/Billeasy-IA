@@ -7,9 +7,6 @@ const envSchema = z.object({
   PORT: z.string().default('3001'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
-  // Database
-  DATABASE_URL: z.string(),
-
   // Redis
   REDIS_URL: z.string().optional(),
 
@@ -47,10 +44,6 @@ export const config = {
   nodeEnv: parsed.data.NODE_ENV,
   isDev: parsed.data.NODE_ENV === 'development',
   isProd: parsed.data.NODE_ENV === 'production',
-
-  database: {
-    url: parsed.data.DATABASE_URL,
-  },
 
   redis: {
     url: parsed.data.REDIS_URL,
